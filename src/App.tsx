@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Banknote, BarChart3, Building2, Coins, CreditCard, Download,
-  Gift, Home, Landmark, LineChart, Moon, PiggyBank, ReceiptText,
-  Sun, Upload, Wallet,
+  Banknote, BarChart3, Building2, ClipboardList, Coins, CreditCard,
+  Download, Gift, Home, Landmark, LineChart, Moon, PiggyBank,
+  ReceiptText, RotateCcw, SlidersHorizontal, Sun, Upload, Wallet,
 } from 'lucide-react';
 import type { BankTx, PrognoseConfig, TaxFormData } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import {
   BANK_TXS_KEY, PROGNOSE_KEY, STORAGE_KEY, TABS_KEY, THEME_KEY,
   loadBankTxs, loadPrognose, loadSavedData, loadTheme, loadTabs,
-  mergeWithDefaults, DEFAULT_PROGNOSE,
+  mergeWithDefaults, saveItem, DEFAULT_DATA, DEFAULT_PROGNOSE,
 } from './utils/storage';
 import { useLanguage } from './i18n/LanguageContext';
 import { IncomeTab } from './components/IncomeTab';
@@ -21,6 +21,7 @@ import { UitgavenTab } from './components/UitgavenTab';
 import { AfschrijvingenTab } from './components/AfschrijvingenTab';
 import { SchenkingenTab } from './components/SchenkingenTab';
 import { JaarruimteSection } from './components/JaarruimteSection';
+import { WaardesTab } from './components/WaardesTab';
 import { MarginaleDrukChart } from './components/MarginaleDrukChart';
 import { NetWorthProjection } from './components/NetWorthProjection';
 import { BankImportTab } from './components/BankImportTab';
@@ -29,7 +30,8 @@ import './App.css';
 
 const ALL_TABS = [
   'inkomen', 'wonen', 'bank', 'portfolio', 'schulden', 'uitgaven',
-  'afschrijvingen', 'schenkingen', 'jaarruimte', 'grafieken', 'bankImport',
+  'afschrijvingen', 'schenkingen', 'jaarruimte', 'waardes', 'grafieken',
+  'bankImport',
 ] as const;
 type TabName = (typeof ALL_TABS)[number];
 
@@ -43,6 +45,7 @@ const TAB_ICONS: Record<TabName, typeof Wallet> = {
   afschrijvingen: Coins,
   schenkingen: Gift,
   jaarruimte: PiggyBank,
+  waardes: ClipboardList,
   grafieken: BarChart3,
   bankImport: Building2,
 };
@@ -53,29 +56,48 @@ export default function App() {
   const [prognose, setPrognose] = useState<PrognoseConfig>(loadPrognose);
   const [bankTxs, setBankTxs] = useState<BankTx[]>(loadBankTxs);
   const [theme, setTheme] = useState<'dark' | 'light'>(loadTheme);
-  const [enabledTabs] = useState<string[]>(() => loadTabs([...ALL_TABS]));
+  const [enabledTabs, setEnabledTabs] = useState<string[]>(() =>
+    loadTabs([...ALL_TABS])
+  );
   const [activeTab, setActiveTab] = useState<TabName>(
     () => (enabledTabs[0] as TabName) ?? 'inkomen'
   );
+  const [showTabSettings, setShowTabSettings] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
 
   // Persistence
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    saveItem(STORAGE_KEY, JSON.stringify(data));
   }, [data]);
   useEffect(() => {
-    localStorage.setItem(PROGNOSE_KEY, JSON.stringify(prognose));
+    saveItem(PROGNOSE_KEY, JSON.stringify(prognose));
   }, [prognose]);
   useEffect(() => {
-    localStorage.setItem(BANK_TXS_KEY, JSON.stringify(bankTxs));
+    saveItem(BANK_TXS_KEY, JSON.stringify(bankTxs));
   }, [bankTxs]);
   useEffect(() => {
-    localStorage.setItem(TABS_KEY, JSON.stringify(enabledTabs));
+    saveItem(TABS_KEY, JSON.stringify(enabledTabs));
   }, [enabledTabs]);
   useEffect(() => {
-    localStorage.setItem(THEME_KEY, theme);
+    saveItem(THEME_KEY, theme);
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  const toggleTab = (tab: TabName) => {
+    const next = enabledTabs.includes(tab)
+      ? enabledTabs.filter((x) => x !== tab)
+      : ALL_TABS.filter((x) => enabledTabs.includes(x) || x === tab);
+    if (next.length === 0) return; // keep at least one tab
+    setEnabledTabs(next);
+    if (!next.includes(activeTab)) setActiveTab(next[0] as TabName);
+  };
+
+  const onReset = () => {
+    if (!confirm(t.app.resetConfirm)) return;
+    setData(DEFAULT_DATA);
+    setPrognose(DEFAULT_PROGNOSE);
+    setBankTxs([]);
+  };
 
   const result = useMemo(() => calculateTaxes(data), [data]);
   const toetsingsinkomen =
@@ -149,7 +171,38 @@ export default function App() {
           <button className="btn" onClick={() => importRef.current?.click()}>
             <Upload size={16} /> <span className="btn-text">{t.app.import}</span>
           </button>
+          <button
+            className="btn btn-icon"
+            onClick={() => setShowTabSettings((v) => !v)}
+            aria-label={t.app.tabSettings}
+            aria-expanded={showTabSettings}
+            title={t.app.tabSettings}
+          >
+            <SlidersHorizontal size={18} />
+          </button>
+          <button
+            className="btn btn-icon btn-danger"
+            onClick={onReset}
+            aria-label={t.app.reset}
+            title={t.app.reset}
+          >
+            <RotateCcw size={18} />
+          </button>
         </div>
+        {showTabSettings && (
+          <div className="tab-settings" role="menu">
+            {ALL_TABS.map((tab) => (
+              <label key={tab} className="checkbox-label tab-settings-row">
+                <input
+                  type="checkbox"
+                  checked={enabledTabs.includes(tab)}
+                  onChange={() => toggleTab(tab)}
+                />
+                <span>{t.tabs[tab]}</span>
+              </label>
+            ))}
+          </div>
+        )}
       </header>
 
       <nav className="tabbar" role="tablist">
@@ -183,6 +236,7 @@ export default function App() {
           {activeTab === 'afschrijvingen' && <AfschrijvingenTab data={data} setData={setData} />}
           {activeTab === 'schenkingen' && <SchenkingenTab data={data} setData={setData} />}
           {activeTab === 'jaarruimte' && <JaarruimteSection data={data} />}
+          {activeTab === 'waardes' && <WaardesTab data={data} setData={setData} />}
           {activeTab === 'grafieken' && (
             <>
               <MarginaleDrukChart />

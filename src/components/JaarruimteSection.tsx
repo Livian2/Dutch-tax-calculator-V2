@@ -1,8 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { TaxFormData } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
-import { fmtEur, fmtPct } from '../utils/storage';
+import { fmtEur, fmtPct, saveItem } from '../utils/storage';
 import { Card, NumberField, StatRow } from './controls';
+
+const JAARRUIMTE_KEY = 'nl-belasting-jaarruimte-v1';
+
+function loadInputs(): { factorA: number; reservering: number } {
+  try {
+    const raw = localStorage.getItem(JAARRUIMTE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      return { factorA: p.factorA || 0, reservering: p.reservering || 0 };
+    }
+  } catch {
+    // fall through to defaults
+  }
+  return { factorA: 0, reservering: 0 };
+}
 
 // 2026 constants
 const AOW_FRANCHISE = 19172;
@@ -21,8 +36,13 @@ interface Props {
  */
 export function JaarruimteSection({ data }: Props) {
   const { t } = useLanguage();
-  const [factorA, setFactorA] = useState(0);
-  const [reservering, setReservering] = useState(0);
+  const [factorA, setFactorA] = useState(() => loadInputs().factorA);
+  const [reservering, setReservering] = useState(() => loadInputs().reservering);
+
+  // Keep inputs across tab switches (the component unmounts per tab)
+  useEffect(() => {
+    saveItem(JAARRUIMTE_KEY, JSON.stringify({ factorA, reservering }));
+  }, [factorA, reservering]);
 
   const inkomen = Math.min(
     data.income.grossSalary + data.income.freelanceIncome,

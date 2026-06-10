@@ -8,6 +8,7 @@ export const nl = {
     resetConfirm: 'Weet je zeker dat je alle gegevens wilt wissen?',
     darkMode: 'Donkere modus',
     lightMode: 'Lichte modus',
+    tabSettings: 'Tabbladen tonen/verbergen',
   },
   tabs: {
     inkomen: 'Inkomen',
@@ -19,8 +20,18 @@ export const nl = {
     afschrijvingen: 'Afschrijvingen',
     schenkingen: 'Schenkingen',
     jaarruimte: 'Jaarruimte',
+    waardes: 'Waardes 1 jan',
     grafieken: 'Grafieken',
     bankImport: 'Bank import',
+  },
+  waardes: {
+    title: 'Waardes per 1 januari',
+    intro: 'Informatief overzicht van je saldi per 1 januari. Deze gegevens worden niet gebruikt in de berekeningen.',
+    beleggingen: 'Beleggingsrekeningen',
+    spaarrekeningen: 'Spaarrekeningen',
+    betaalrekeningen: 'Betaalrekeningen',
+    waarde: 'Waarde 1 januari',
+    addRekening: 'Rekening toevoegen',
   },
   common: {
     add: 'Toevoegen',
@@ -325,6 +336,7 @@ export const en: Translations = {
     resetConfirm: 'Are you sure you want to clear all data?',
     darkMode: 'Dark mode',
     lightMode: 'Light mode',
+    tabSettings: 'Show/hide tabs',
   },
   tabs: {
     inkomen: 'Income',
@@ -336,8 +348,18 @@ export const en: Translations = {
     afschrijvingen: 'Sinking fund',
     schenkingen: 'Gifts',
     jaarruimte: 'Pension space',
+    waardes: 'Values Jan 1',
     grafieken: 'Charts',
     bankImport: 'Bank import',
+  },
+  waardes: {
+    title: 'Values as of January 1',
+    intro: 'Informational overview of your balances on January 1. This data is not used in any calculation.',
+    beleggingen: 'Investment accounts',
+    spaarrekeningen: 'Savings accounts',
+    betaalrekeningen: 'Checking accounts',
+    waarde: 'Value January 1',
+    addRekening: 'Add account',
   },
   common: {
     add: 'Add',

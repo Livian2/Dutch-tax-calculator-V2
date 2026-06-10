@@ -10,6 +10,15 @@ export function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+/** localStorage write that survives quota/privacy-mode errors */
+export function saveItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // storage full or unavailable — keep the app usable
+  }
+}
+
 export const DEFAULT_DATA: TaxFormData = {
   personal: { filingStatus: 'single', taxYear: 2026, age: 30 },
   income: {

@@ -106,10 +106,11 @@ export function MarginaleDrukChart() {
               {x >= 1000 ? `${x / 1000}k` : x}
             </text>
           ))}
-          {PEAKS.map((p) => (
+          {PEAKS.map((p, i) => (
             <g key={p.x}>
               <line x1={px(p.x)} x2={px(p.x)} y1={PAD.t} y2={H - PAD.b} className="chart-marker" />
-              <text x={px(p.x) + 3} y={PAD.t + 10} className="chart-tick">
+              {/* Stagger label rows so adjacent boundary labels don't overlap */}
+              <text x={px(p.x) + 3} y={PAD.t + 10 + (i % 2) * 13} className="chart-tick">
                 {p.label} {fmtEur(p.x)}
               </text>
             </g>
