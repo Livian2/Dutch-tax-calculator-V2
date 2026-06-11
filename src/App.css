@@ -636,7 +636,6 @@
   .results-panel {
     position: static;
     max-height: none;
-    order: -1;
   }
 
   .results-highlight {

@@ -12,7 +12,7 @@ interface Props {
 export function ResultsPanel({ result, wozAsset }: Props) {
   const { t } = useLanguage();
   const { box1, box3, toeslagen } = result;
-  // On phones the panel sits above the form: keep sections collapsed there
+  // On phones the detail sections start collapsed to keep the page scannable
   const [defaultOpen] = useState(
     () => window.matchMedia('(min-width: 1025px)').matches
   );
