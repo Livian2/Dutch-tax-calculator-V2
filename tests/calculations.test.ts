@@ -480,6 +480,37 @@ eq('parseDutchDate slashes', parseDutchDate('5/3/2024'), '2024-03-05');
   eq('detectBroker BOM + quoted DEGIRO', detectBroker(bom), 'degiro');
 }
 
+{
+  // Real IBKR statement export: Statement/Summary sections precede the
+  // Transaction History section, quantities are signed decimals, and
+  // identical same-day trades must not collide on the dedupe key.
+  const ibkrStatement = [
+    'Statement,Header,Field Name,Field Value',
+    'Statement,Data,Title,Transaction History',
+    'Statement,Data,Period,"May 7, 2025 - May 7, 2026"',
+    'Summary,Header,Field Name,Field Value',
+    'Summary,Data,Base Currency,EUR',
+    'Transaction History,Header,Date,Account,Description,Transaction Type,Symbol,Quantity,Price,Price Currency,Gross Amount ,Commission,Net Amount',
+    'Transaction History,Data,2026-05-07,U***28042,BEYOND MEAT INC,Sell,BYND,-95.0,0.9,USD,72.92808000000001,-0.8705064960480001,72.057573503952',
+    'Transaction History,Data,2026-05-07,U***28042,Net Amount in Base from Forex Trade: -0.29 EUR.USD,Forex Trade Component,EUR.USD,-0.29,1.17633,USD,9.751066720000146E-4,-,9.751066720000146E-4',
+    'Transaction History,Data,2026-04-30,U***28042,Electronic Fund Transfer,Deposit,-,-,-,-,1500.0,-,1500.0',
+    'Transaction History,Data,2026-04-21,U***28042,POET TECHNOLOGIES INC,Sell,POET,-4.0,10.335,USD,35.2022502,-0.35341186175412,34.84883833824588',
+    'Transaction History,Data,2026-04-21,U***28042,POET TECHNOLOGIES INC,Sell,POET,-4.0,10.335,USD,35.2022502,-0.35341186175412,34.84883833824588',
+    'Transaction History,Data,2026-05-04,U***28042,AST SPACEMOBILE INC,Buy,ASTS,3.0,70.9,USD,-181.932945,-0.85535769815,-182.78830269815',
+    'Transaction History,Data,2026-04-15,U***28042,MAIN (US56035L1044) Cash Dividend USD 0.26 (Ordinary Dividend),Dividend,MAIN,-,-,-,2.2035,-,2.2035',
+  ].join('\n');
+  eq('detectBroker IBKR statement sections', detectBroker(ibkrStatement), 'ibkr');
+  const txs = parseIBKR(ibkrStatement);
+  eq('IBKR statement: trades only', txs.length, 4);
+  approx('IBKR signed qty abs', txs[0].quantity, 95);
+  eq('IBKR sell type', txs[0].type, 'sell');
+  // Gross amount is in EUR base currency: 72.928 / 95
+  approx('IBKR priceEur from base gross', txs[0].priceEur, 72.92808 / 95, 0.001);
+  eq('IBKR ticker kept', txs[0].ticker, 'BYND');
+  const ids = new Set(txs.map((t) => t.orderId));
+  eq('IBKR identical same-day trades get distinct ids', ids.size, 4);
+}
+
 // ════════════════════════════════════════════════════════════════════════
 // Verzamelinkomen feeds AHK (doc §23 steps 3–7)
 // ════════════════════════════════════════════════════════════════════════

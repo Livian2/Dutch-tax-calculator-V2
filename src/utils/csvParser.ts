@@ -104,8 +104,10 @@ export function detectBroker(text: string): Broker {
   // header detection works on both quoted and unquoted files.
   const clean = (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).replace(/"/g, '');
   const firstLine = clean.split(/\r\n|\n|\r/, 1)[0] ?? '';
+  // IBKR statements may start with Statement/Summary sections before the
+  // Transaction History section, so search the whole file.
   if (
-    firstLine.includes('Transaction History') &&
+    clean.includes('Transaction History') &&
     clean.includes('Transaction Type')
   )
     return 'ibkr';
@@ -184,6 +186,9 @@ export function parseDeGiro(text: string): ImportedTransaction[] {
 export function parseIBKR(text: string): ImportedTransaction[] {
   const rows = parseCSV(text);
   const out: ImportedTransaction[] = [];
+  // IBKR provides no order id; identical trades on the same day would
+  // collide on a composite key, so add an occurrence counter per key.
+  const seen = new Map<string, number>();
   for (const r of rows) {
     if (r[0] !== 'Transaction History' || r[1] !== 'Data') continue;
     const txType = (r[5] || '').trim();
@@ -193,6 +198,10 @@ export function parseIBKR(text: string): ImportedTransaction[] {
     const rawPrice = parseNl(r[8] || '');
     const grossAmount = Math.abs(parseNl(r[10] || ''));
     const priceEur = quantity > 0 && grossAmount > 0 ? grossAmount / quantity : rawPrice;
+
+    const baseKey = `${r[2]}|${r[6]}|${txType}|${r[7]}|${r[8]}`;
+    const n = seen.get(baseKey) ?? 0;
+    seen.set(baseKey, n + 1);
 
     out.push({
       date: (r[2] || '').trim(),
@@ -204,7 +213,7 @@ export function parseIBKR(text: string): ImportedTransaction[] {
       priceEur,
       currency: (r[9] || 'EUR').trim() || 'EUR',
       broker: 'IBKR',
-      orderId: `${r[2]}|${r[6]}|${txType}|${r[7]}|${r[8]}`,
+      orderId: `${baseKey}#${n}`,
       warnings: [],
     });
   }

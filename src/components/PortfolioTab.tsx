@@ -52,6 +52,9 @@ export function PortfolioTab({ data, setData }: Props) {
     );
     let skipped = 0;
     const fresh: Transaction[] = [];
+    // Stubs so imported tickers participate in live price fetching
+    const newHoldings: Holding[] = [];
+    const knownNames = new Set(pf.holdings.map((h) => h.name.toLowerCase()));
     for (const tx of transactions) {
       if (tx.orderId && existingIds.has(tx.orderId)) {
         skipped++;
@@ -68,8 +71,26 @@ export function PortfolioTab({ data, setData }: Props) {
         broker: tx.broker,
         orderId: tx.orderId,
       });
+      const nameKey = tx.holdingName.toLowerCase();
+      if ((tx.ticker || tx.isin) && !knownNames.has(nameKey)) {
+        knownNames.add(nameKey);
+        newHoldings.push({
+          id: uid(),
+          name: tx.holdingName,
+          type: 'stocks',
+          broker: tx.broker,
+          ticker: tx.ticker,
+          isin: tx.isin || undefined,
+          quantity: 0, // quantity comes from the transactions
+          pricePerUnit: 0,
+          currentPrice: 0,
+        });
+      }
     }
-    setPf({ transactions: [...pf.transactions, ...fresh] });
+    setPf({
+      transactions: [...pf.transactions, ...fresh],
+      holdings: newHoldings.length > 0 ? [...pf.holdings, ...newHoldings] : pf.holdings,
+    });
     setMessage(t.portfolio.importResult(fresh.length, tx2broker(broker), skipped));
   };
 
