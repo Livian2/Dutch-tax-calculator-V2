@@ -21,6 +21,7 @@ export function PortfolioTab({ data, setData }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fetching, setFetching] = useState(false);
   const [message, setMessage] = useState('');
+  const [view, setView] = useState<'holdings' | 'transactions'>('holdings');
 
   const setPf = (patch: Partial<TaxFormData['portfolio']>) =>
     setData({ ...data, portfolio: { ...pf, ...patch } });
@@ -140,8 +141,33 @@ export function PortfolioTab({ data, setData }: Props) {
     }
   };
 
+  const sortedTxs = pf.transactions
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date) || a.holdingName.localeCompare(b.holdingName));
+
   return (
     <>
+      <div className="segmented" role="tablist">
+        <button
+          role="tab"
+          aria-selected={view === 'holdings'}
+          className={view === 'holdings' ? 'seg-active' : ''}
+          onClick={() => setView('holdings')}
+        >
+          {t.portfolio.holdings} ({positions.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={view === 'transactions'}
+          className={view === 'transactions' ? 'seg-active' : ''}
+          onClick={() => setView('transactions')}
+        >
+          {t.portfolio.transactions} ({pf.transactions.length})
+        </button>
+      </div>
+      {message && <p className="info-banner">{message}</p>}
+
+      {view === 'holdings' && (
       <Card
         title={t.portfolio.holdings}
         actions={
@@ -169,7 +195,6 @@ export function PortfolioTab({ data, setData }: Props) {
           </>
         }
       >
-        {message && <p className="info-banner">{message}</p>}
         {pf.holdings.map((h) => (
           <div key={h.id} className="item-block">
             <div className="item-block-header">
@@ -202,7 +227,9 @@ export function PortfolioTab({ data, setData }: Props) {
         ))}
         {pf.holdings.length === 0 && <p className="empty-hint">{t.common.none}</p>}
       </Card>
+      )}
 
+      {view === 'transactions' && (
       <Card
         title={t.portfolio.transactions}
         actions={
@@ -241,37 +268,61 @@ export function PortfolioTab({ data, setData }: Props) {
           </>
         }
       >
-        {pf.transactions
-          .slice()
-          .sort((a, b) => b.date.localeCompare(a.date))
-          .map((tx) => (
-            <div key={tx.id} className="item-block">
-              <div className="item-block-header">
-                <TextField label={t.common.name} value={tx.holdingName} onChange={(v) => updateTx(tx.id, { holdingName: v })} />
-                <button className="btn btn-icon btn-danger" onClick={() => setPf({ transactions: pf.transactions.filter((x) => x.id !== tx.id) })} aria-label={t.common.remove}>
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              <div className="field-grid">
-                <SelectField
-                  label={t.common.type}
-                  value={tx.type}
-                  onChange={(v) => updateTx(tx.id, { type: v as 'buy' | 'sell' })}
-                  options={[
-                    { value: 'buy', label: t.portfolio.buy },
-                    { value: 'sell', label: t.portfolio.sell },
-                  ]}
-                />
-                <TextField label={t.common.date} value={tx.date} onChange={(v) => updateTx(tx.id, { date: v })} type="date" />
-                <NumberField label={t.portfolio.quantity} value={tx.quantity} onChange={(v) => updateTx(tx.id, { quantity: v })} prefix="" step={0.0001} />
-                <NumberField label={t.portfolio.purchasePrice} value={tx.pricePerUnit} onChange={(v) => updateTx(tx.id, { pricePerUnit: v })} step={0.01} />
-                <TextField label={t.portfolio.broker} value={tx.broker} onChange={(v) => updateTx(tx.id, { broker: v })} />
-              </div>
-            </div>
-          ))}
-        {pf.transactions.length === 0 && <p className="empty-hint">{t.common.none}</p>}
+        {sortedTxs.length > 0 ? (
+          <div className="table-scroll">
+            <table className="data-table tx-table">
+              <thead>
+                <tr>
+                  <th>{t.common.date}</th>
+                  <th>{t.common.name}</th>
+                  <th>{t.common.type}</th>
+                  <th className="num">{t.portfolio.quantity}</th>
+                  <th className="num">{t.portfolio.purchasePrice}</th>
+                  <th>{t.portfolio.broker}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedTxs.map((tx) => (
+                  <tr key={tx.id}>
+                    <td>
+                      <input type="date" value={tx.date} onChange={(e) => updateTx(tx.id, { date: e.target.value })} />
+                    </td>
+                    <td>
+                      <input type="text" className="tx-name" value={tx.holdingName} onChange={(e) => updateTx(tx.id, { holdingName: e.target.value })} />
+                    </td>
+                    <td>
+                      <select value={tx.type} onChange={(e) => updateTx(tx.id, { type: e.target.value as 'buy' | 'sell' })}>
+                        <option value="buy">{t.portfolio.buy}</option>
+                        <option value="sell">{t.portfolio.sell}</option>
+                      </select>
+                    </td>
+                    <td className="num">
+                      <input type="number" inputMode="decimal" step={0.0001} value={tx.quantity} onChange={(e) => updateTx(tx.id, { quantity: parseFloat(e.target.value) || 0 })} />
+                    </td>
+                    <td className="num">
+                      <input type="number" inputMode="decimal" step={0.01} value={tx.pricePerUnit} onChange={(e) => updateTx(tx.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
+                    </td>
+                    <td>
+                      <input type="text" className="tx-broker" value={tx.broker} onChange={(e) => updateTx(tx.id, { broker: e.target.value })} />
+                    </td>
+                    <td>
+                      <button className="btn btn-icon btn-danger btn-sm" onClick={() => setPf({ transactions: pf.transactions.filter((x) => x.id !== tx.id) })} aria-label={t.common.remove}>
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="empty-hint">{t.common.none}</p>
+        )}
       </Card>
+      )}
 
+      {view === 'holdings' && (
       <Card title={t.portfolio.positionsTitle}>
         {positions.length > 0 ? (
           <div className="table-scroll">
@@ -314,6 +365,7 @@ export function PortfolioTab({ data, setData }: Props) {
           <StatRow label={t.portfolio.realisedGain} value={fmtEur(realised)} positive={realised >= 0} negative={realised < 0} />
         </div>
       </Card>
+      )}
     </>
   );
 }

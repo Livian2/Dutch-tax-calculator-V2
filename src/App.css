@@ -503,6 +503,36 @@
   color: var(--accent);
 }
 
+/* ── Segmented control ──────────────────────────────────────────────── */
+
+.segmented {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.segmented button {
+  border: none;
+  background: transparent;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.segmented .seg-active {
+  background: var(--bg-elevated);
+  color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
 /* ── Tables ─────────────────────────────────────────────────────────── */
 
 .table-scroll {
@@ -540,6 +570,56 @@
 
 .row-muted {
   opacity: 0.5;
+}
+
+/* Compact inline-editable transaction table */
+.tx-table td {
+  padding: 2px 4px;
+}
+
+.tx-table input,
+.tx-table select {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 0.86rem;
+  color: var(--text);
+  width: 100%;
+  min-width: 0;
+  outline: none;
+}
+
+.tx-table input:hover,
+.tx-table select:hover {
+  border-color: var(--border);
+}
+
+.tx-table input:focus,
+.tx-table select:focus {
+  border-color: var(--accent);
+  background: var(--bg-inset);
+}
+
+.tx-table input[type='date'] {
+  width: 9.5em;
+}
+
+.tx-table input[type='number'] {
+  width: 6em;
+  text-align: right;
+}
+
+.tx-table .tx-name {
+  min-width: 13em;
+}
+
+.tx-table .tx-broker {
+  width: 6.5em;
+}
+
+.btn-sm {
+  padding: 5px;
 }
 
 /* ── Charts ─────────────────────────────────────────────────────────── */
