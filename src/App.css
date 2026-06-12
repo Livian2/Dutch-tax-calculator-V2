@@ -618,6 +618,14 @@
   width: 6.5em;
 }
 
+.tx-table .tx-ticker {
+  width: 7em;
+}
+
+.tx-table .tx-isin {
+  width: 9em;
+}
+
 .btn-sm {
   padding: 5px;
 }

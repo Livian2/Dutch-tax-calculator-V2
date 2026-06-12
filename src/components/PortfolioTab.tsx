@@ -6,7 +6,7 @@ import { computePositions, calcRealisedGain } from '../utils/taxCalculations';
 import { parseBrokerCSV } from '../utils/csvParser';
 import { fetchPricesWithFX, resolveBareTickers, resolveIsins } from '../utils/priceFetcher';
 import { fmtEur, fmtEur2, fmtPct, uid } from '../utils/storage';
-import { Card, NumberField, SelectField, StatRow, TextField } from './controls';
+import { Card, StatRow } from './controls';
 
 interface Props {
   data: TaxFormData;
@@ -168,65 +168,146 @@ export function PortfolioTab({ data, setData }: Props) {
       {message && <p className="info-banner">{message}</p>}
 
       {view === 'holdings' && (
+      <>
+      <Card
+        title={t.portfolio.positionsTitle}
+        actions={
+          <button className="btn" onClick={onFetchPrices} disabled={fetching}>
+            <RefreshCw size={16} className={fetching ? 'spin' : ''} />{' '}
+            {fetching ? t.portfolio.fetching : t.portfolio.fetchPrices}
+          </button>
+        }
+      >
+        <div className="mini-stats" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+          <StatRow label={t.common.total} value={fmtEur(totalValue)} bold />
+          <StatRow
+            label={t.portfolio.unrealisedGain}
+            value={fmtEur(totalValue - totalCost)}
+            positive={totalValue - totalCost >= 0}
+            negative={totalValue - totalCost < 0}
+          />
+          <StatRow label={t.portfolio.realisedGain} value={fmtEur(realised)} positive={realised >= 0} negative={realised < 0} />
+        </div>
+        {positions.length > 0 ? (
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{t.common.name}</th>
+                  <th>{t.portfolio.broker}</th>
+                  <th className="num">{t.portfolio.quantity}</th>
+                  <th className="num">{t.portfolio.avgCost}</th>
+                  <th className="num">{t.portfolio.currentPrice}</th>
+                  <th className="num">{t.portfolio.currentValue}</th>
+                  <th className="num">Div %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {positions
+                  .slice()
+                  .sort((a, b) => b.currentValue - a.currentValue)
+                  .map((p) => (
+                    <tr key={p.id}>
+                      <td title={[p.sector, p.country].filter(Boolean).join(' · ')}>{p.ticker || p.name}</td>
+                      <td>{p.broker}</td>
+                      <td className="num">{p.quantity.toLocaleString('nl-NL', { maximumFractionDigits: 4 })}</td>
+                      <td className="num">{fmtEur2(p.avgCost)}</td>
+                      <td className="num">{fmtEur2(p.currentPrice)}</td>
+                      <td className="num">{fmtEur(p.currentValue)}</td>
+                      <td className="num">{(p.dividendYield ?? 0) > 0 ? fmtPct(p.dividendYield ?? 0) : '—'}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="empty-hint">{t.common.none}</p>
+        )}
+      </Card>
+
       <Card
         title={t.portfolio.holdings}
         actions={
-          <>
-            <button className="btn" onClick={onFetchPrices} disabled={fetching}>
-              <RefreshCw size={16} className={fetching ? 'spin' : ''} />{' '}
-              {fetching ? t.portfolio.fetching : t.portfolio.fetchPrices}
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() =>
-                setPf({
-                  holdings: [
-                    ...pf.holdings,
-                    {
-                      id: uid(), name: '', type: 'etf', broker: '', ticker: '',
-                      quantity: 0, pricePerUnit: 0, currentPrice: 0,
-                    },
-                  ],
-                })
-              }
-            >
-              <Plus size={16} /> {t.portfolio.addHolding}
-            </button>
-          </>
+          <button
+            className="btn btn-primary"
+            onClick={() =>
+              setPf({
+                holdings: [
+                  ...pf.holdings,
+                  {
+                    id: uid(), name: '', type: 'etf', broker: '', ticker: '',
+                    quantity: 0, pricePerUnit: 0, currentPrice: 0,
+                  },
+                ],
+              })
+            }
+          >
+            <Plus size={16} /> {t.portfolio.addHolding}
+          </button>
         }
       >
-        {pf.holdings.map((h) => (
-          <div key={h.id} className="item-block">
-            <div className="item-block-header">
-              <TextField label={t.common.name} value={h.name} onChange={(v) => updateHolding(h.id, { name: v })} />
-              <button className="btn btn-icon btn-danger" onClick={() => setPf({ holdings: pf.holdings.filter((x) => x.id !== h.id) })} aria-label={t.common.remove}>
-                <Trash2 size={16} />
-              </button>
-            </div>
-            <div className="field-grid">
-              <SelectField
-                label={t.common.type}
-                value={h.type}
-                onChange={(v) => updateHolding(h.id, { type: v as AssetType })}
-                options={ASSET_TYPES.map((at) => ({ value: at, label: t.portfolio.typeLabels[at] }))}
-              />
-              <TextField label={t.portfolio.ticker} value={h.ticker} onChange={(v) => updateHolding(h.id, { ticker: v.toUpperCase() })} placeholder="ASML.AS" />
-              <TextField label={t.portfolio.isin} value={h.isin ?? ''} onChange={(v) => updateHolding(h.id, { isin: v.toUpperCase() || undefined })} placeholder="NL0010273215" />
-              <TextField label={t.portfolio.broker} value={h.broker} onChange={(v) => updateHolding(h.id, { broker: v })} placeholder="DEGIRO" />
-              <NumberField label={t.portfolio.quantity} value={h.quantity} onChange={(v) => updateHolding(h.id, { quantity: v })} prefix="" step={0.0001} />
-              <NumberField label={t.portfolio.purchasePrice} value={h.pricePerUnit} onChange={(v) => updateHolding(h.id, { pricePerUnit: v })} step={0.01} />
-              <NumberField label={t.portfolio.currentPrice} value={h.currentPrice} onChange={(v) => updateHolding(h.id, { currentPrice: v })} step={0.01} />
-            </div>
-            {(h.dividendYield ?? 0) > 0 && (
-              <p className="field-hint">
-                {t.portfolio.dividend}: {fmtEur2(h.dividendPerShareEur ?? 0)} ({fmtPct(h.dividendYield ?? 0)})
-                {h.sector ? ` · ${h.sector}` : ''}{h.country ? ` · ${h.country}` : ''}
-              </p>
-            )}
+        {pf.holdings.length > 0 ? (
+          <div className="table-scroll">
+            <table className="data-table tx-table">
+              <thead>
+                <tr>
+                  <th>{t.common.name}</th>
+                  <th>{t.common.type}</th>
+                  <th>{t.portfolio.ticker}</th>
+                  <th>{t.portfolio.isin}</th>
+                  <th>{t.portfolio.broker}</th>
+                  <th className="num">{t.portfolio.quantity}</th>
+                  <th className="num">{t.portfolio.purchasePrice}</th>
+                  <th className="num">{t.portfolio.currentPrice}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {pf.holdings.map((h) => (
+                  <tr key={h.id}>
+                    <td>
+                      <input type="text" className="tx-name" value={h.name} onChange={(e) => updateHolding(h.id, { name: e.target.value })} />
+                    </td>
+                    <td>
+                      <select value={h.type} onChange={(e) => updateHolding(h.id, { type: e.target.value as AssetType })}>
+                        {ASSET_TYPES.map((at) => (
+                          <option key={at} value={at}>{t.portfolio.typeLabels[at]}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input type="text" className="tx-ticker" placeholder="ASML.AS" value={h.ticker} onChange={(e) => updateHolding(h.id, { ticker: e.target.value.toUpperCase() })} />
+                    </td>
+                    <td>
+                      <input type="text" className="tx-isin" placeholder="NL0010273215" value={h.isin ?? ''} onChange={(e) => updateHolding(h.id, { isin: e.target.value.toUpperCase() || undefined })} />
+                    </td>
+                    <td>
+                      <input type="text" className="tx-broker" value={h.broker} onChange={(e) => updateHolding(h.id, { broker: e.target.value })} />
+                    </td>
+                    <td className="num">
+                      <input type="number" inputMode="decimal" step={0.0001} value={h.quantity} onChange={(e) => updateHolding(h.id, { quantity: parseFloat(e.target.value) || 0 })} />
+                    </td>
+                    <td className="num">
+                      <input type="number" inputMode="decimal" step={0.01} value={h.pricePerUnit} onChange={(e) => updateHolding(h.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
+                    </td>
+                    <td className="num">
+                      <input type="number" inputMode="decimal" step={0.01} value={h.currentPrice} onChange={(e) => updateHolding(h.id, { currentPrice: parseFloat(e.target.value) || 0 })} />
+                    </td>
+                    <td>
+                      <button className="btn btn-icon btn-danger btn-sm" onClick={() => setPf({ holdings: pf.holdings.filter((x) => x.id !== h.id) })} aria-label={t.common.remove}>
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-        {pf.holdings.length === 0 && <p className="empty-hint">{t.common.none}</p>}
+        ) : (
+          <p className="empty-hint">{t.common.none}</p>
+        )}
       </Card>
+      </>
       )}
 
       {view === 'transactions' && (
@@ -322,50 +403,6 @@ export function PortfolioTab({ data, setData }: Props) {
       </Card>
       )}
 
-      {view === 'holdings' && (
-      <Card title={t.portfolio.positionsTitle}>
-        {positions.length > 0 ? (
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>{t.common.name}</th>
-                  <th>{t.portfolio.broker}</th>
-                  <th className="num">{t.portfolio.quantity}</th>
-                  <th className="num">{t.portfolio.avgCost}</th>
-                  <th className="num">{t.portfolio.currentPrice}</th>
-                  <th className="num">{t.portfolio.currentValue}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {positions.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.ticker || p.name}</td>
-                    <td>{p.broker}</td>
-                    <td className="num">{p.quantity.toLocaleString('nl-NL', { maximumFractionDigits: 4 })}</td>
-                    <td className="num">{fmtEur2(p.avgCost)}</td>
-                    <td className="num">{fmtEur2(p.currentPrice)}</td>
-                    <td className="num">{fmtEur(p.currentValue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="empty-hint">{t.common.none}</p>
-        )}
-        <div className="mini-stats">
-          <StatRow label={t.common.total} value={fmtEur(totalValue)} bold />
-          <StatRow
-            label={t.portfolio.unrealisedGain}
-            value={fmtEur(totalValue - totalCost)}
-            positive={totalValue - totalCost >= 0}
-            negative={totalValue - totalCost < 0}
-          />
-          <StatRow label={t.portfolio.realisedGain} value={fmtEur(realised)} positive={realised >= 0} negative={realised < 0} />
-        </div>
-      </Card>
-      )}
     </>
   );
 }
