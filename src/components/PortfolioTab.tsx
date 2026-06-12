@@ -43,6 +43,10 @@ export function PortfolioTab({ data, setData }: Props) {
       setMessage(t.portfolio.importUnknown);
       return;
     }
+    if (transactions.length === 0) {
+      setMessage(t.portfolio.importEmpty(tx2broker(broker)));
+      return;
+    }
     const existingIds = new Set(
       pf.transactions.map((x) => x.orderId).filter(Boolean)
     );

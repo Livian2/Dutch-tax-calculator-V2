@@ -100,10 +100,13 @@ export function parseDutchDate(s: string): string {
 // ── Broker auto-detection ────────────────────────────────────────────────
 
 export function detectBroker(text: string): Broker {
-  const firstLine = text.split(/\r\n|\n|\r/, 1)[0] ?? '';
+  // Real exports often quote every field — strip quotes (and a BOM) so
+  // header detection works on both quoted and unquoted files.
+  const clean = (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).replace(/"/g, '');
+  const firstLine = clean.split(/\r\n|\n|\r/, 1)[0] ?? '';
   if (
-    firstLine.includes('Transaction History,') &&
-    text.includes('Transaction Type')
+    firstLine.includes('Transaction History') &&
+    clean.includes('Transaction Type')
   )
     return 'ibkr';
   if (
@@ -149,10 +152,15 @@ export function parseDeGiro(text: string): ImportedTransaction[] {
       warnings.push(`Price taken in ${currency}; no EUR value column found`);
     }
 
+    // Column 16/17 layout varies between export versions (Order ID vs a
+    // currency column) — only accept values that plausibly are an ID.
+    const idLike = (s: string) => s.length >= 8 && !/^[A-Z]{3}$/.test(s);
     const uuid = (r[17] || '').trim();
     const orderIdCol = (r[16] || '').trim();
     const orderId =
-      uuid || orderIdCol || `${r[0]}|${r[1]}|${product}|${aantal}|${koers}`;
+      (idLike(uuid) && uuid) ||
+      (idLike(orderIdCol) && orderIdCol) ||
+      `${r[0]}|${r[1]}|${product}|${aantal}|${koers}`;
 
     out.push({
       date: parseDutchDate(r[0] || ''),

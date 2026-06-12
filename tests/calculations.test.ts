@@ -447,6 +447,39 @@ eq('parseDutchDate slashes', parseDutchDate('5/3/2024'), '2024-03-05');
   eq('BUX orderId from description', txs[0].orderId, '0a1b2c3d-1111-2222-3333-444455556666');
 }
 
+{
+  // Real-world IBKR exports quote every field — detection must still work
+  const ibkrQuoted = [
+    '"Transaction History","Header","Date","Account","Description","Transaction Type","Symbol","Quantity","Price","Price Currency","Gross Amount","Commission","Net Amount"',
+    '"Transaction History","Data","2024-05-01","U123","APPLE INC","Buy","AAPL","5","170.00","USD","-800.00","-1.00","-801.00"',
+  ].join('\r\n');
+  eq('detectBroker quoted IBKR', detectBroker(ibkrQuoted), 'ibkr');
+  const txs = parseIBKR(ibkrQuoted);
+  eq('quoted IBKR parses', txs.length, 1);
+  approx('quoted IBKR price', txs[0].priceEur, 160, 0.01);
+}
+
+{
+  // Current DEGIRO layout: currency in col 16, Order ID in col 17 — the
+  // currency code must never be used as a dedupe key
+  const degiro = [
+    'Datum,Tijd,Product,ISIN,Beurs,Uitvoeringsplaats,Aantal,Koers,,Lokale waarde,,Waarde,Wisselkoers,Transactiekosten en/of,,Totaal,,Order ID',
+    '15-03-2024,09:05,VANGUARD FTSE AW,IE00B3RBWM25,EAM,EAM,10,"104,50",EUR,"-1.045,00",EUR,"-1.045,00",,"-1,00",EUR,"-1.046,00",EUR,f1e2d3c4-0001-4abc-9def-aaaa00000001',
+    '16-03-2024,10:00,VANGUARD FTSE AW,IE00B3RBWM25,EAM,EAM,5,"105,00",EUR,"-525,00",EUR,"-525,00",,"-1,00",EUR,"-526,00",EUR,',
+  ].join('\n');
+  const txs = parseDeGiro(degiro);
+  eq('DEGIRO new layout: 2 txs', txs.length, 2);
+  eq('DEGIRO orderId from col 17', txs[0].orderId, 'f1e2d3c4-0001-4abc-9def-aaaa00000001');
+  eq('DEGIRO currency never used as orderId', txs[1].orderId.includes('EUR') === false || txs[1].orderId.length > 8, true);
+  eq('DEGIRO distinct fallback ids', txs[0].orderId !== txs[1].orderId, true);
+}
+
+{
+  // BOM + quoted header must not break detection
+  const bom = '﻿"Datum","Tijd","Product","ISIN","Beurs","Uitvoeringsplaats","Aantal","Koers"';
+  eq('detectBroker BOM + quoted DEGIRO', detectBroker(bom), 'degiro');
+}
+
 // ════════════════════════════════════════════════════════════════════════
 // Verzamelinkomen feeds AHK (doc §23 steps 3–7)
 // ════════════════════════════════════════════════════════════════════════

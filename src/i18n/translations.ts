@@ -129,7 +129,9 @@ export const nl = {
     importCsv: 'Broker CSV importeren',
     importResult: (n: number, broker: string, skipped: number) =>
       `${n} transacties geïmporteerd van ${broker}${skipped > 0 ? ` (${skipped} duplicaten overgeslagen)` : ''}`,
-    importUnknown: 'Onbekend CSV-formaat. Ondersteund: DEGIRO, IBKR, BUX.',
+    importUnknown: 'Onbekend CSV-formaat. Ondersteund: DEGIRO (Transactions.csv), IBKR (Transaction History), BUX. Let op: het DEGIRO-rekeningoverzicht (Account.csv) wordt niet ondersteund — exporteer je Transacties.',
+    importEmpty: (broker: string) =>
+      `${broker}-bestand herkend, maar geen koop/verkooptransacties gevonden. Controleer of je het transactie-overzicht hebt geëxporteerd.`,
     buy: 'Koop',
     sell: 'Verkoop',
     positionsTitle: 'Berekenede posities',
@@ -457,7 +459,9 @@ export const en: Translations = {
     importCsv: 'Import broker CSV',
     importResult: (n: number, broker: string, skipped: number) =>
       `${n} transactions imported from ${broker}${skipped > 0 ? ` (${skipped} duplicates skipped)` : ''}`,
-    importUnknown: 'Unknown CSV format. Supported: DEGIRO, IBKR, BUX.',
+    importUnknown: 'Unknown CSV format. Supported: DEGIRO (Transactions.csv), IBKR (Transaction History), BUX. Note: the DEGIRO account statement (Account.csv) is not supported — export your Transactions instead.',
+    importEmpty: (broker: string) =>
+      `Recognised a ${broker} file, but found no buy/sell transactions. Check that you exported the transaction overview.`,
     buy: 'Buy',
     sell: 'Sell',
     positionsTitle: 'Computed positions',
